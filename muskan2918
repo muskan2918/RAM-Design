@@ -1,0 +1,88 @@
+// ram.v
+module ram #(
+    parameter DATA_WIDTH = 8,
+    parameter ADDR_WIDTH = 4
+)(
+    input wire clk,
+    input wire we,              // Write enable
+    input wire [ADDR_WIDTH-1:0] addr,
+    input wire [DATA_WIDTH-1:0] din,
+    output reg [DATA_WIDTH-1:0] dout
+);
+
+    // RAM declaration
+    reg [DATA_WIDTH-1:0] mem [0:(1<<ADDR_WIDTH)-1];
+
+    always @(posedge clk) begin
+        if (we) begin
+            mem[addr] <= din;      // Write operation
+        end
+        dout <= mem[addr];         // Read operation (registered output)
+    end
+
+endmodule
+// tb_ram.v
+`timescale 1ns/1ps
+
+module tb_ram;
+
+    parameter DATA_WIDTH = 8;
+    parameter ADDR_WIDTH = 4;
+
+    reg clk;
+    reg we;
+    reg [ADDR_WIDTH-1:0] addr;
+    reg [DATA_WIDTH-1:0] din;
+    wire [DATA_WIDTH-1:0] dout;
+
+    // Instantiate the RAM
+    ram #(DATA_WIDTH, ADDR_WIDTH) uut (
+        .clk(clk),
+        .we(we),
+        .addr(addr),
+        .din(din),
+        .dout(dout)
+    );
+
+    // Clock generation: 10ns period
+    always #5 clk = ~clk;
+
+    initial begin
+        $display("Starting RAM Test...");
+        $dumpfile("ram_test.vcd"); // for waveform view in GTKWave
+        $dumpvars(0, tb_ram);
+
+        clk = 0;
+        we = 0;
+        addr = 0;
+        din = 0;
+
+        // Wait for global reset
+        #10;
+
+        // Write data to all addresses
+        $display("Writing to RAM...");
+        for (int i = 0; i < 16; i++) begin
+            @(posedge clk);
+            we = 1;
+            addr = i;
+            din = i + 8;  // Arbitrary data
+        end
+
+        // Turn off write enable
+        @(posedge clk);
+        we = 0;
+
+        // Read back data
+        $display("Reading from RAM...");
+        for (int i = 0; i < 16; i++) begin
+            @(posedge clk);
+            addr = i;
+        end
+
+        #10;
+        $display("RAM Test Complete.");
+        $finish;
+    end
+
+endmodule
